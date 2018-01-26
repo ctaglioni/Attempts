@@ -131,7 +131,7 @@ datasets <- list(census_year_erp1 = cy1,
 
 dataModels <- list(Model(census_year_erp1 ~ Poisson(mean ~ 1),
                          series = "population",
-                         jump = 0.03),
+                         jump = 0.01),
                    Model(census_year_erp2 ~ PoissonBinomial(prob = 0.95),
                          series = "population"),
                    Model(reg_births ~ PoissonBinomial(prob = 0.95),
@@ -248,12 +248,12 @@ par(mfrow=c(1,1))
 # Estimation by year
 dplot( ~ time | region, data = pop.chain,
        prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
-       main = "Population estimation 2006-2014",
+       main = "Population estimation 2006-2015",
        overlay = list(values = population, col = "red", lwd= 2))
 
 dplot( ~ time | region, data = bir.chain,
        prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
-       main = "Births estimation 2006-2014",
+       main = "Births estimation 2006-2015",
        overlay = list(values = reg_births, col = "red", lwd= 2))
 
 dplot( ~ time | region, data = dea.chain,
