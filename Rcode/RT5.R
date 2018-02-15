@@ -8,15 +8,15 @@ library(dplyr)
 library(docopt)
 library(demest)
 library(demItaly)
+library(beepr)
 
-setwd("C:\\0_PhD\\Thesis\\Thesis_R\\attempts")
-
+dimnames(italy.popn.reg)$time <- 2001:2016
 census_year_erp<- Counts(italy.popn.reg, dimscales = c(time="Points")) %>%
   collapseDimension(margin = c("time", "region"))%>%
-  subarray(time != c("2016", "2017"))
+  subarray(time != c("2016")) %>%
+  subarray(time >"2004")
 
-population<- extrapolate(census_year_erp, labels = "2005")
-
+population<- census_year_erp
 
 reg_births<- Counts(italy.births.reg, dimscales = c(time="Intervals")) %>%
   subarray(time !="2016") %>%
@@ -62,40 +62,44 @@ account<- Movements(population = population,
                                  internal_out = intdep)) %>%
   makeConsistent()
 
-systemModels<- list(Model(population ~ Poisson(mean ~ time + region, useExpose=FALSE),
-                          time ~ DLM(damp = NULL),
-                          region ~ Exch(),
-                          jump = 0.003),
-                    Model(births ~ Poisson(mean ~ time + region),
-                          time ~ DLM(trend = NULL, damp = NULL),
-                          region ~ Exch(),
-                          jump = 0.02),
-                    Model(deaths ~ Poisson(mean ~ time + region),
-                          time ~ DLM(trend = NULL, damp = NULL),
-                          region ~ Exch(),
+systemModels<- list(Model(population ~ Poisson(mean ~ time * region, useExpose=FALSE),
+                          time : region ~ Exch(),
+                          jump = 0.002),
+                    Model(births ~ Poisson(mean ~ time * region),
+                          time : region ~ Exch(),
                           jump = 0.015),
-                    Model(external_in ~ Poisson(mean ~ time + region),
-                          time ~ DLM(trend = NULL), 
-                          region ~ Exch(),
+                    Model(deaths ~ Poisson(mean ~ time * region),
+                          time : region ~ Exch(),
+                          jump = 0.015),
+                    Model(external_in ~ Poisson(mean ~ time * region),
+                          time : region ~ Exch(),
                           jump = 0.03),
-                    Model(external_out ~ Poisson(mean ~ time + region),
-                          time ~ DLM(trend = NULL),
-                          region ~ Exch(),
+                    Model(external_out ~ Poisson(mean ~ time * region),
+                          time : region ~ Exch(),
                           jump = 0.03),
-                    Model(internal_in ~ Poisson(mean ~ time + region),
-                          time ~ DLM(trend = NULL), 
-                          region ~ Exch(),
+                    Model(internal_in ~ Poisson(mean ~ time * region),
+                          time : region ~ Exch(),
                           jump = 0.03),
-                    Model(internal_out ~ Poisson(mean ~ time + region),
-                          time ~ DLM(trend = NULL),
-                          region ~ Exch(),
+                    Model(internal_out ~ Poisson(mean ~ time * region),
+                          time : region ~ Exch(),
                           jump = 0.03))
 
 # the population size of the region is not directly linked to the number of migrants
 # i.e. only exchangeable prior, nor covariate
 
-datasets <- list(census_year_erp1 = census_year_erp[1:6,],
-                 census_year_erp2 = census_year_erp[7:10,],
+cy1 <- census_year_erp %>%
+  subarray(time != "2011")
+
+cy2 <- census_year_erp%>%
+  subarray(time == "2011")
+cy2 <- as.array(cy2)
+dimnames(cy2)<- list(region = dimnames(cy1)[[2]])
+cy2 <- Counts(cy2)
+cy2011 <- addDimension(cy2, name = "time", labels = "2011", dimscale = c(time ="Points"))
+
+
+datasets <- list(census_year_erp1 = cy1,
+                 census_year_erp2 = cy2011,
                  reg_births = reg_births,
                  reg_deaths = reg_deaths,
                  arrivals = arrivals,
@@ -103,57 +107,43 @@ datasets <- list(census_year_erp1 = census_year_erp[1:6,],
                  intarr = intarr,
                  intdep = intdep)
 
-# dataModels <- list(Model(census_year_erp ~ PoissonBinomial(prob = 0.95),
-#                          series = "population"),
-#                    Model(reg_births ~ PoissonBinomial(prob = 0.98),
-#                          series = "births"),
-#                    Model(reg_deaths ~ PoissonBinomial(prob = 0.98),
-#                          series = "deaths"),
-#                    Model(arrivals ~ Poisson(mean ~ 1),
-#                          series = "external_in",
-#                          jump = 0.05),
-#                    Model(departures ~ Poisson(mean ~ 1),
-#                          series = "external_out",
-#                          jump = 0.05),
-#                    Model(intarr ~ Poisson(mean ~ 1),
-#                          series = "internal_in",
-#                          jump = 0.05),
-#                    Model(intdep ~ Poisson(mean ~ 1),
-#                          series = "internal_out",
-#                          jump = 0.05))
+
 
 dataModels <- list(Model(census_year_erp1 ~ Poisson(mean ~ region),
                          series = "population",
-                         jump = 0.03),
+                         jump = 0.002),
                    Model(census_year_erp2 ~ PoissonBinomial(prob = 0.95),
                          series = "population"),
                    Model(reg_births ~ PoissonBinomial(prob = 0.95),
                          series = "births"),
                    Model(reg_deaths ~ PoissonBinomial(prob = 0.90),
                          series = "deaths"),
-                   Model(arrivals ~ Poisson(mean ~ 1),
+                   Model(arrivals ~ Poisson(mean ~ region),
+                         region ~ Exch(covariates = Covariates(mean ~ mean, data = mean_pop)),
                          series = "external_in",
-                         jump = 0.05),
-                   Model(departures ~ Poisson(mean ~ 1),
+                         jump = 0.03),
+                   Model(departures ~ Poisson(mean ~ region),
+                         region ~ Exch(covariates = Covariates(mean ~ mean, data = mean_pop)),
                          series = "external_out",
                          jump = 0.03),
-                   Model(intarr ~ Poisson(mean ~ 1),
+                   Model(intarr ~ Poisson(mean ~ region),
+                         region ~ Exch(covariates = Covariates(mean ~ mean, data = mean_pop)),
                          series = "internal_in",
-                         jump = 0.05),
-                   Model(intdep ~ Poisson(mean ~ 1),
+                         jump = 0.03),
+                   Model(intdep ~ Poisson(mean ~ region),
+                         region ~ Exch(covariates = Covariates(mean ~ mean, data = mean_pop)),
                          series = "internal_out",
-                         jump = 0.05))
+                         jump = 0.03))
 
 
-onlyreg <- "C:/0_PhD/Thesis/Thesis_R/simpleRegionPoisP.est"
+onlyreg <- "C:/0_PhD/Thesis/Thesis_R/RT5.est"
 
-n_sim <- 5000
-n_burnin <- 5000
-n_chain <- 4
-n_thin <- 10
+n_sim <- 50000
+n_burnin <- 50000
+n_chain <- 3
+n_thin <- 250
 
-alarm()
-estimateAccount(account = account,
+beep(sound=2, estimateAccount(account = account,
                 systemModels = systemModels,
                 datasets = datasets,
                 dataModels = dataModels,
@@ -162,7 +152,7 @@ estimateAccount(account = account,
                 nSim = n_sim,
                 nChain = n_chain,
                 nThin = n_thin,
-                useC = TRUE)
+                useC = TRUE))
 
 fetchSummary(onlyreg)
 showModel(onlyreg)

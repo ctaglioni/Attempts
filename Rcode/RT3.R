@@ -340,13 +340,5 @@ plot(MCMC$dataModels.intdep.prior.mean)
 plot(MCMC$dataModels.intdep.prior.sd)
 
 
-
-
-
-dim(MCMC$systemModels.births.likelihood.rate[[1]])
-dimnames(MCMC$systemModels.births.likelihood.rate[[1]])
-plot(MCMC$systemModels.births.likelihood.rate[[1]])
-plot(MCMC$systemModels.births.prior.mean[[1]])
-
 gelman.diag(MCMC$systemModels.population.likelihood.count)
 

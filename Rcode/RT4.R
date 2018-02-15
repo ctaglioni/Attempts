@@ -9,13 +9,11 @@ library(docopt)
 library(demest)
 library(demItaly)
 
-setwd("C:\\0_PhD\\Thesis\\Thesis_R\\attempts")
-
-dimnames(italy.popn.reg)$time <- 2005:2016
-
+dimnames(italy.popn.reg)$time <- 2001:2016
 census_year_erp<- Counts(italy.popn.reg, dimscales = c(time="Points")) %>%
-  subarray(time !="2016") %>%
-  collapseDimension(margin = c("time", "region"))
+  collapseDimension(margin = c("time", "region"))%>%
+  subarray(time != c("2016")) %>%
+  subarray(time >"2004")
 
 population<- census_year_erp
 
@@ -44,16 +42,6 @@ intdep<- Counts(italy.int.out, dimscales = c(time="Intervals")) %>%
   subarray(time !="2016") %>%
   collapseDimension(margin = c("time", "region"))
 
-# Regional means
-# Regions <- dimnames(population)$region
-# mean_pop <- data.frame(region = Regions, mean = apply(population, 2, mean))
-# mean_bir <- data.frame(region = Regions, mean=apply(reg_births, 2, mean))
-# mean_dea <- data.frame(region = Regions, mean=apply(reg_deaths, 2, mean))
-# mean_arr <- data.frame(region = Regions, mean=apply(arrivals, 2, mean))
-# mean_dep <- data.frame(region = Regions, mean=apply(departures, 2, mean))
-# mean_intarr <- data.frame(region = Regions, mean=apply(intarr, 2, mean))
-# mean_intdep <- data.frame(region = Regions, mean=apply(intdep, 2, mean))
-
 account<- Movements(population = population,
                     births = reg_births,
                     entries = list(external_in = arrivals,
@@ -63,46 +51,58 @@ account<- Movements(population = population,
                                  internal_out = intdep)) %>%
   makeConsistent()
 
-systemModels<- list(Model(population ~ Poisson(mean ~ time + region, useExpose=FALSE),
-                          time ~ DLM(damp = NULL),
-                          region ~ Exch(),
+systemModels<- list(Model(population ~ Poisson(mean ~ time + region + time*region, useExpose=FALSE),
+                          time ~ DLM(),
+                          region ~ Exch(error = Error(scale = HalfT(scale = 0.1))),
+                          time:region ~ Exch(),
                           jump = 0.003),
-                    Model(births ~ Poisson(mean ~ time + region),
-                          time ~ DLM(trend = NULL, damp = NULL),
-                          region ~ Exch(),
+                    Model(births ~ Poisson(mean ~ time + region + time*region),
+                          time ~ DLM(),
+                          region ~ Exch(error = Error(scale = HalfT(scale = 0.1))),
+                          time:region ~ Exch(),
                           jump = 0.02),
-                    Model(deaths ~ Poisson(mean ~ time + region),
-                          time ~ DLM(trend = NULL, damp = NULL),
-                          region ~ Exch(),
+                    Model(deaths ~ Poisson(mean ~ time + region + time*region),
+                          time ~ DLM(),
+                          region ~ Exch(error = Error(scale = HalfT(scale = 0.1))),
+                          time:region ~ Exch(),
                           jump = 0.015),
-                    Model(external_in ~ Poisson(mean ~ time + region),
-                          time ~ DLM(trend = NULL), 
-                          region ~ Exch(),
+                    Model(external_in ~ Poisson(mean ~ time + region + time*region),
+                          time ~ DLM(), 
+                          region ~ Exch(error = Error(scale = HalfT(scale = 0.1))),
+                          time:region ~ Exch(),
                           jump = 0.03),
-                    Model(external_out ~ Poisson(mean ~ time + region),
-                          time ~ DLM(trend = NULL),
-                          region ~ Exch(),
+                    Model(external_out ~ Poisson(mean ~ time + region + time*region),
+                          time ~ DLM(),
+                          region ~ Exch(error = Error(scale = HalfT(scale = 0.1))),
+                          time:region ~ Exch(),
                           jump = 0.03),
-                    Model(internal_in ~ Poisson(mean ~ time + region),
-                          time ~ DLM(trend = NULL), 
-                          region ~ Exch(),
+                    Model(internal_in ~ Poisson(mean ~ time + region + time*region),
+                          time ~ DLM(), 
+                          region ~ Exch(error = Error(scale = HalfT(scale = 0.1))),
+                          time:region ~ Exch(),
                           jump = 0.03),
-                    Model(internal_out ~ Poisson(mean ~ time + region),
-                          time ~ DLM(trend = NULL),
-                          region ~ Exch(),
+                    Model(internal_out ~ Poisson(mean ~ time + region + time*region),
+                          time ~ DLM(),
+                          region ~ Exch(error = Error(scale = HalfT(scale = 0.1))),
+                          time:region ~ Exch(),
                           jump = 0.03))
 
 # the population size of the region is not directly linked to the number of migrants
 # i.e. only exchangeable prior, nor covariate
 
 cy1 <- census_year_erp %>%
-  subarray(time < "2011")
+  subarray(time != "2011")
 cy2 <- census_year_erp%>%
-  subarray(time > "2010")
+  subarray(time == "2011")
+cy2 <- as.array(cy2)
+dimnames(cy2)<- list(region = dimnames(cy1)[[2]])
 
+cy2 <- Counts(cy2)
+
+cy2011 <- addDimension(cy2, name = "time", labels = "2011", dimscale = c(time ="Points"))
 
 datasets <- list(census_year_erp1 = cy1,
-                 census_year_erp2 = cy2,
+                 census_year_erp2 = cy2011,
                  reg_births = reg_births,
                  reg_deaths = reg_deaths,
                  arrivals = arrivals,
@@ -110,29 +110,15 @@ datasets <- list(census_year_erp1 = cy1,
                  intarr = intarr,
                  intdep = intdep)
 
-# dataModels <- list(Model(census_year_erp ~ PoissonBinomial(prob = 0.95),
-#                          series = "population"),
-#                    Model(reg_births ~ PoissonBinomial(prob = 0.98),
-#                          series = "births"),
-#                    Model(reg_deaths ~ PoissonBinomial(prob = 0.98),
-#                          series = "deaths"),
-#                    Model(arrivals ~ Poisson(mean ~ 1),
-#                          series = "external_in",
-#                          jump = 0.05),
-#                    Model(departures ~ Poisson(mean ~ 1),
-#                          series = "external_out",
-#                          jump = 0.05),
-#                    Model(intarr ~ Poisson(mean ~ 1),
-#                          series = "internal_in",
-#                          jump = 0.05),
-#                    Model(intdep ~ Poisson(mean ~ 1),
-#                          series = "internal_out",
-#                          jump = 0.05))
+sd<- cy1 %>%
+  collapseDimension(margin = c("region", "time")) %>%
+  as("Values") 
+sd<- sd * 0.0025
+mean<- sd / sd
 
-dataModels <- list(Model(census_year_erp1 ~ Poisson(mean ~ 1),
-                         series = "population",
-                         jump = 0.01),
-                   Model(census_year_erp2 ~ PoissonBinomial(prob = 0.95),
+dataModels <- list(Model(census_year_erp1 ~ NormalFixed(mean = mean, sd = sd),
+                         series = "population"),
+                   Model(census_year_erp2 ~ PoissonBinomial(prob = 0.98),
                          series = "population"),
                    Model(reg_births ~ PoissonBinomial(prob = 0.95),
                          series = "births"),
@@ -140,26 +126,29 @@ dataModels <- list(Model(census_year_erp1 ~ Poisson(mean ~ 1),
                          series = "deaths"),
                    Model(arrivals ~ Poisson(mean ~ 1),
                          series = "external_in",
+                         priorSD = HalfT(scale = 0.4),
                          jump = 0.05),
                    Model(departures ~ Poisson(mean ~ 1),
                          series = "external_out",
+                         priorSD = HalfT(scale = 0.4),
                          jump = 0.03),
                    Model(intarr ~ Poisson(mean ~ 1),
                          series = "internal_in",
+                         priorSD = HalfT(scale = 0.3),
                          jump = 0.05),
                    Model(intdep ~ Poisson(mean ~ 1),
                          series = "internal_out",
+                         priorSD = HalfT(scale = 0.3),
                          jump = 0.05))
 
 
-onlyreg <- "C:/0_PhD/Thesis/Thesis_R/simpleRegionPoisP2.est"
+onlyreg <- "C:/0_PhD/Thesis/Thesis_R/RT4.est"
 
 n_sim <- 5000
 n_burnin <- 5000
 n_chain <- 4
 n_thin <- 50
 
-alarm()
 estimateAccount(account = account,
                 systemModels = systemModels,
                 datasets = datasets,
@@ -293,11 +282,67 @@ dimnames(MCMC$account.population[[4]])[[2]]
 )
 
 
-plot(MCMC$account.population[[1]])
-dim(MCMC$systemModels.births.likelihood.rate[[1]])
-dimnames(MCMC$systemModels.births.likelihood.rate[[1]])
-plot(MCMC$systemModels.births.likelihood.rate[[1]])
-plot(MCMC$systemModels.births.prior.mean[[1]])
+plot(MCMC$account.population)
+plot(MCMC$account.births)
+plot(MCMC$account.external_in)
+plot(MCMC$account.internal_in)
+plot(MCMC$account.deaths)
+plot(MCMC$account.external_out)
+plot(MCMC$account.internal_out)
+plot(MCMC$systemModels.population.likelihood.count)
+plot(MCMC$systemModels.population.prior.mean)
+plot(MCMC$systemModels.population.hyper.time.scaleLevel)
+plot(MCMC$systemModels.population.hyper.time.scaleTrend)
+plot(MCMC$systemModels.population.hyper.time.damp)
+plot(MCMC$systemModels.population.hyper.time.scaleError)
+plot(MCMC$systemModels.population.hyper.region.scaleError)
+plot(MCMC$systemModels.births.likelihood.rate)
+plot(MCMC$systemModels.births.prior.mean)
+plot(MCMC$systemModels.births.hyper.time.scaleLevel)
+plot(MCMC$systemModels.births.hyper.time.scaleTrend)
+plot(MCMC$systemModels.births.hyper.time.damp)
+plot(MCMC$systemModels.births.hyper.time.scaleError)
+plot(MCMC$systemModels.births.hyper.region.scaleError)
+plot(MCMC$systemModels.external_in.likelihood.rate)
+plot(MCMC$systemModels.external_in.prior.mean)
+plot(MCMC$systemModels.external_in.prior.sd)
+plot(MCMC$systemModels.external_in.hyper.time.scaleLevel)
+plot(MCMC$systemModels.external_in.hyper.time.damp)
+plot(MCMC$systemModels.external_in.hyper.time.scaleError)
+plot(MCMC$systemModels.external_in.hyper.region.scaleError)
+plot(MCMC$systemModels.internal_in.likelihood.rate)
+plot(MCMC$systemModels.internal_in.prior.mean)
+plot(MCMC$systemModels.external_in.prior.sd)
+plot(MCMC$systemModels.internal_in.hyper.time.scaleLevel)
+plot(MCMC$systemModels.internal_in.hyper.time.damp)
+plot(MCMC$systemModels.internal_in.hyper.time.scaleError)
+plot(MCMC$systemModels.internal_in.hyper.region.scaleError)
+plot(MCMC$systemModels.deaths.likelihood.rate)
+plot(MCMC$systemModels.deaths.prior.mean)
+plot(MCMC$systemModels.deaths.prior.sd)
+plot(MCMC$systemModels.deaths.hyper.time.scaleLevel)
+plot(MCMC$systemModels.deaths.hyper.time.scaleError)
+plot(MCMC$systemModels.deaths.hyper.region.scaleError)
+plot(MCMC$systemModels.external_out.likelihood.rate)
+plot(MCMC$systemModels.external_out.prior.mean)
+plot(MCMC$systemModels.external_out.hyper.time.scaleLevel)
+plot(MCMC$systemModels.external_out.hyper.time.damp)
+plot(MCMC$systemModels.internal_out.hyper.time.scaleError)
+plot(MCMC$systemModels.internal_out.hyper.region.scaleError)
+plot(MCMC$dataModels.arrivals.likelihood.rate)
+plot(MCMC$dataModels.arrivals.prior.mean)
+plot(MCMC$dataModels.arrivals.prior.sd)
+plot(MCMC$dataModels.departures.likelihood.rate)
+plot(MCMC$dataModels.departures.prior.mean)
+plot(MCMC$dataModels.departures.prior.sd)
+plot(MCMC$dataModels.intarr.likelihood.rate)
+plot(MCMC$dataModels.intarr.prior.mean)
+plot(MCMC$dataModels.intarr.prior.sd)
+plot(MCMC$dataModels.intdep.likelihood.rate)
+plot(MCMC$dataModels.intdep.prior.mean)
+plot(MCMC$dataModels.intdep.prior.sd)
 
-gelman.diag(MCMC$systemModels.population.likelihood.count)
+
+
+
 
