@@ -1,0 +1,190 @@
+Convergence not reached for any series.
+System model with age and time but no interaction.
+Data model all Poisson but population (NormalFixed).
+Population show differences in estimation especially for central age groups.
+Anomaly for first year age group 10-14.
+Birth estimation first period picks at 25-29 and 30-34.
+Second period smoother but also picks, range(-100000, 50000)
+Deaths have a pick of higher estimation during the first period at 80-84,
+but otherwise they are always underestimtated.
+Immigration has picks varying very much especially before 65 years first period 
+tends to underestimate whereas the second overestimate. Range (-100000, +100000)
+The opposite happens for emigration with an amomalous overestimation at age 90+ while deaths are underestimated.
+
+-------------------------------------------------- 
+Account:
+*population*
+dimensions: age, time
+n cells: 57
+*births*
+dimensions: age, time, triangle
+n cells: 28
+*external_in*
+dimensions: age, time, triangle
+n cells: 76
+*deaths*
+dimensions: age, time, triangle
+n cells: 76
+*external_out*
+dimensions: age, time, triangle
+n cells: 76
+-------------------------------------------------- 
+System models:
+*population*
+population ~ Poisson(mean ~ time + age, useExpose = FALSE),
+time ~ DLM(trend = Trend(scale = HalfT(scale = 0.05)), damp = NULL, 
+    error = Error(scale = HalfT(scale = 0.05))),
+age ~ DLM(trend = NULL),
+0.002
+dimensions: age, time
+*births*
+births ~ Poisson(mean ~ time + age),
+time ~ DLM(trend = NULL, damp = NULL),
+age ~ DLM(trend = NULL),
+0.005
+dimensions: age, time, triangle
+*external_in*
+external_in ~ Poisson(mean ~ time + age),
+time ~ DLM(trend = NULL),
+age ~ DLM(trend = NULL),
+0.01
+dimensions: age, time, triangle
+*deaths*
+deaths ~ Poisson(mean ~ time + age),
+time ~ DLM(trend = NULL, damp = NULL),
+age ~ DLM(trend = NULL),
+0.01
+dimensions: age, time, triangle
+*external_out*
+external_out ~ Poisson(mean ~ time + age),
+time ~ DLM(trend = NULL),
+age ~ DLM(trend = NULL),
+0.03
+dimensions: age, time, triangle
+-------------------------------------------------- 
+Datasets:
+*census_year_erp*
+Object of class "Counts"
+dimensions: age, time
+n cells: 57,  n missing: 0, integers: TRUE, n zeros: 0, median: 3038257
+*reg_births*
+Object of class "Counts"
+dimensions: age, time
+n cells: 14,  n missing: 0, integers: TRUE, n zeros: 0, median: 246027.5
+*reg_deaths*
+Object of class "Counts"
+dimensions: age, time
+n cells: 38,  n missing: 0, integers: TRUE, n zeros: 0, median: 38249
+*arrivals*
+Object of class "Counts"
+dimensions: age, time
+n cells: 38,  n missing: 0, integers: TRUE, n zeros: 0, median: 74613
+*departures*
+Object of class "Counts"
+dimensions: age, time
+n cells: 38,  n missing: 0, integers: TRUE, n zeros: 0, median: 15913
+-------------------------------------------------- 
+Data models:
+*census_year_erp*
+census_year_erp ~ NormalFixed(mean = mean, sd = sd),
+"population"
+dimensions: age, time
+*reg_births*
+reg_births ~ Poisson(mean ~ 1),
+0.005,
+"births"
+dimensions: age, time
+*reg_deaths*
+reg_deaths ~ Poisson(mean ~ 1),
+0.005,
+"deaths"
+dimensions: age, time
+*arrivals*
+arrivals ~ Poisson(mean ~ 1),
+0.01,
+"external_in"
+dimensions: age, time
+*departures*
+departures ~ Poisson(mean ~ 1),
+0.01,
+"external_out"
+dimensions: age, time
+-------------------------------------------------- 
+MCMC statistics:
+nBurnin: 50000,  nSim: 50000,  nChain: 4,  nThin: 250,  nIteration: 800 
+
+Metropolis-Hastings updates:
+                                           jump acceptance autocorr
+systemModels.population.likelihood.count  0.002      0.343    0.437
+systemModels.births.likelihood.rate       0.005      0.478    0.913
+systemModels.external_in.likelihood.rate  0.010      0.469    0.913
+systemModels.deaths.likelihood.rate       0.010      0.391    0.598
+systemModels.external_out.likelihood.rate 0.030      0.349    0.928
+dataModels.reg_births.likelihood.rate     0.005      0.374    0.903
+dataModels.reg_deaths.likelihood.rate     0.005      0.496    0.578
+dataModels.arrivals.likelihood.rate       0.010      0.356    0.933
+dataModels.departures.likelihood.rate     0.010      0.588    0.946
+
+parameters:
+                                                  Rhat      2.5%       50%   97.5% length
+account.population                              . 1.30    476895   3041029 4833816     57
+account.births                                  . 4.35      4232    123772  550440     28
+account.external_in                             . 2.26      1948     45728  155817     76
+account.deaths                                  . 2.44       521     18609  338077     76
+account.external_out                            . 3.58      1494     11773   40621     76
+systemModels.population.likelihood.count        . 1.55    476854   3041097 4834451     57
+systemModels.population.prior.mean                1.02      13.2        15    15.4     57
+systemModels.population.prior.sd                  1.00    0.0848     0.106    0.13      1
+systemModels.population.hyper.time.scaleLevel     1.01    0.0171     0.241   0.944      1
+systemModels.population.hyper.time.scaleTrend     1.00   0.00321    0.0229  0.0537      1
+systemModels.population.hyper.time.scaleError     1.00   0.00291    0.0373    0.11      1
+systemModels.population.hyper.age.scaleLevel      1.02     0.198     0.272   0.348      1
+systemModels.population.hyper.age.damp          . 1.37     0.893     0.973   0.995      1
+systemModels.population.hyper.age.scaleError      1.02   0.00062     0.035   0.132      1
+systemModels.births.likelihood.rate             . 4.37  0.000376    0.0162  0.0532     28
+systemModels.births.prior.mean                  . 1.54     -7.73     -4.14   -2.89     28
+systemModels.births.prior.sd                    . 1.42     0.113     0.199   0.276      1
+systemModels.births.hyper.time.scaleLevel         1.00     0.011     0.419    2.61      1
+systemModels.births.hyper.time.scaleError         1.00    0.0293     0.358     1.5      1
+systemModels.births.hyper.age.scaleLevel          1.01     0.682      1.31    2.44      1
+systemModels.births.hyper.age.damp                1.00     0.821     0.873   0.977      1
+systemModels.births.hyper.age.scaleError          1.01    0.0409     0.655    1.54      1
+systemModels.external_in.likelihood.rate        . 2.66  0.000633   0.00501  0.0196     76
+systemModels.external_in.prior.mean             . 1.71     -7.33     -5.27   -3.96     76
+systemModels.external_in.prior.sd               . 1.74     0.125     0.197   0.293      1
+systemModels.external_in.hyper.time.scaleLevel    1.03   0.00602     0.478    2.04      1
+systemModels.external_in.hyper.time.damp          1.04     0.849     0.908   0.979      1
+systemModels.external_in.hyper.time.scaleError    1.02    0.0553     0.536    1.48      1
+systemModels.external_in.hyper.age.scaleLevel     1.06     0.318     0.498   0.646      1
+systemModels.external_in.hyper.age.damp           1.01     0.845     0.914    0.98      1
+systemModels.external_in.hyper.age.scaleError     1.04   0.00149      0.16   0.417      1
+systemModels.deaths.likelihood.rate             . 1.90 0.0000751   0.00162   0.217     76
+systemModels.deaths.prior.mean                  . 1.24      -9.5     -6.43   -1.54     76
+systemModels.deaths.prior.sd                    . 2.10    0.0469    0.0801   0.142      1
+systemModels.deaths.hyper.time.scaleLevel         1.00   0.00671     0.499    1.16      1
+systemModels.deaths.hyper.time.scaleError         1.00    0.0338     0.265    1.79      1
+systemModels.deaths.hyper.age.scaleLevel          1.02     0.558     0.713    1.19      1
+systemModels.deaths.hyper.age.damp                1.07     0.895     0.942   0.984      1
+systemModels.deaths.hyper.age.scaleError          1.00    0.0166     0.108   0.497      1
+systemModels.external_out.likelihood.rate       . 3.58  0.000283   0.00149 0.00606     76
+systemModels.external_out.prior.mean            . 2.14     -8.05     -6.54   -5.31     76
+systemModels.external_out.prior.sd              . 2.40    0.0374     0.359   0.572      1
+systemModels.external_out.hyper.time.scaleLevel   1.00    0.0505     0.328    1.96      1
+systemModels.external_out.hyper.time.damp         1.00     0.827     0.903   0.976      1
+systemModels.external_out.hyper.time.scaleError   1.02    0.0357     0.561     1.8      1
+systemModels.external_out.hyper.age.scaleLevel  . 1.37     0.171     0.445   0.882      1
+systemModels.external_out.hyper.age.damp          1.04     0.836     0.918   0.973      1
+systemModels.external_out.hyper.age.scaleError    1.09    0.0176     0.207   0.465      1
+dataModels.reg_births.likelihood.rate           . 4.81     0.751     0.997    1.23     14
+dataModels.reg_births.prior.mean                . 1.41    -0.143 -0.000836  0.0694     14
+dataModels.reg_births.prior.sd                  . 2.35   0.00782    0.0733   0.263      1
+dataModels.reg_deaths.likelihood.rate           . 2.63     0.933      1.02    1.13     38
+dataModels.reg_deaths.prior.mean                . 1.42   -0.0149    0.0245  0.0529     38
+dataModels.reg_deaths.prior.sd                  . 1.31    0.0231    0.0452  0.0808      1
+dataModels.arrivals.likelihood.rate             . 3.36     0.489     0.903    1.68     38
+dataModels.arrivals.prior.mean                  . 1.18    -0.197   -0.0935   0.144     38
+dataModels.arrivals.prior.sd                    . 1.20     0.258      0.35   0.413      1
+dataModels.departures.likelihood.rate           . 3.64     0.205     0.841    1.98     38
+dataModels.departures.prior.mean                . 1.81    -0.691    -0.213 -0.0134     38
+dataModels.departures.prior.sd                  . 2.72     0.216     0.611    1.04      1
+-------------------------------------------------- 

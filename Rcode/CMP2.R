@@ -1,7 +1,3 @@
-#-------------------
-# Only time
-#-------------------
-
 library(methods)
 #library(nzreg)
 library(dplyr)
@@ -17,15 +13,15 @@ census_year_erp<- Counts(italy.popn.reg, dimscales = c(time="Points")) %>%
   subarray(time >"2004") %>%
   collapseDimension(margin = "time")
 
-dim(italy.popn.reg)
-dim(census_year_erp)
+#dim(italy.popn.reg)
+#dim(census_year_erp)
 
 population <- census_year_erp
 
 reg_births<- Counts(italy.births.reg, dimscales = c(time="Intervals")) %>%
   subarray(time !="2016") %>%
   collapseDimension(margin = "time")
-  
+
 reg_deaths <- Counts(italy.deaths.reg, dimscales = c(time="Intervals")) %>%
   collapseDimension(margin = "time")
 
@@ -48,6 +44,7 @@ account<- Movements(population = population,
 
 
 
+
 systemModels <- list(Model(population ~ Poisson(mean ~ time, useExpose = FALSE),
                            time ~ DLM(level = Level(scale = HalfT(scale = 0.05)),
                                       trend = Trend(scale = HalfT(scale = 0.05)),
@@ -55,32 +52,26 @@ systemModels <- list(Model(population ~ Poisson(mean ~ time, useExpose = FALSE),
                                       error = Error(scale = HalfT(scale = 0.05))),
                            jump = 0.0005),
                      Model(births ~ Poisson(mean ~ time),
-                           time ~ DLM(level = Level(scale = HalfT(scale = 0.025)),
-                                      trend = NULL,
-                                      damp = NULL,
-                                      error = Error(scale = HalfT(scale = 0.025))),
-                           jump = 0.005),
-                     Model(deaths ~ Poisson(mean ~ time),
                            time ~ DLM(level = Level(scale = HalfT(scale = 0.05)),
-                                      trend = Trend(scale = HalfT(scale = 0.025)),
+                                      trend = NULL,
                                       damp = NULL,
                                       error = Error(scale = HalfT(scale = 0.05))),
                            jump = 0.005),
+                     Model(deaths ~ Poisson(mean ~ time),
+                           time ~ DLM(trend = NULL, damp = NULL),
+                           jump = 0.005),
                      Model(external_in ~ Poisson(mean ~ time),
-                           `(Intercept)` ~ ExchFixed(sd = 0.1),
-                           time ~ DLM(level = Level(scale = HalfT(scale = 0.1)),
+                           time ~ DLM(level = Level(scale = HalfT(scale = 0.3)),
                                       trend = NULL,
                                       damp = NULL,
-                                      error = Error(scale = HalfT(scale = 0.2))),
+                                      error = Error(scale = HalfT(scale = 0.3))),
                            jump = 0.005),
                      Model(external_out ~ Poisson(mean ~ time),
-                           `(Intercept)` ~ ExchFixed(sd = 0.1),
-                           time ~ DLM(level = Level(scale = HalfT(scale = 0.1)),
-                                      trend = Trend(scale = HalfT(scale = 0.025)),
+                           time ~ DLM(level = Level(scale = HalfT(scale = 0.3)),
+                                      trend = Trend(scale = HalfT(scale = 0.3)),
                                       damp = NULL,
-                                      error = Error(scale = HalfT(scale = 0.1))),
+                                      error = Error(scale = HalfT(scale = 0.3))),
                            jump = 0.005))
-
 
 datasets <- list(census_year_erp = census_year_erp,
                  reg_births = reg_births,
@@ -88,62 +79,52 @@ datasets <- list(census_year_erp = census_year_erp,
                  arrivals = arrivals,
                  departures = departures)
 
-sd<- census_year_erp %>%
+sd <- census_year_erp %>%
   collapseDimension(margin = "time") %>%
   as("Values") 
-sd<- sd * 0.005
-mean<- sd / sd
+sd<- sd * 0.0025
+mean <- sd / sd
+
 
 dataModels <- list(Model(census_year_erp ~ NormalFixed(mean = mean, sd = sd),
                          series = "population"),
-                   Model(reg_births ~ PoissonBinomial(prob = 0.95),
+                   Model(reg_births ~ PoissonBinomial(prob = 0.98),
                          series = "births"),
-                   Model(reg_deaths ~ PoissonBinomial(prob = 0.90),
+                   Model(reg_deaths ~ PoissonBinomial(prob = 0.95),
                          series = "deaths"),
-                   Model(arrivals ~ Poisson(mean ~ time),
-                         `(Intercept)` ~ ExchFixed(sd = 0.1),
-                         lower = 0.8,
-                         upper = 1.2,
-                         time ~ DLM(level = Level(scale = HalfT(scale = 0.2)),
-                                    trend = NULL,
-                                    damp = NULL,
-                                    error = Error(scale = HalfT(scale = 0.2))),
-                         priorSD = HalfT(scale = 0.1),
+                   Model(arrivals ~ CMP(mean ~ 1,
+                                        dispersion = Dispersion(mean = Norm(mean = 0,
+                                                                            sd = 0.1),
+                                                                scale = HalfT(scale = 0.1))),
                          series = "external_in",
-                         jump = 0.007),
-                   Model(departures ~ Poisson(mean ~ time),
-                         `(Intercept)` ~ ExchFixed(sd = 0.1),
-                         lower = 0.8,
-                         upper = 1.2,
-                         time ~ DLM(level = Level(scale = HalfT(scale = 0.2)),
-                                    trend = Trend(scale = HalfT(scale = 0.025)),
-                                    damp = NULL,
-                                    error = Error(scale = HalfT(scale = 0.2))),
-                         priorSD = HalfT(scale = 0.1),
+                         jump = 0.005),
+                   Model(departures ~ CMP(mean ~ 1,
+                                          dispersion = Dispersion(mean = Norm(mean = 0, sd = 0.1),
+                                                                  scale = HalfT(scale = 0.1))),
                          series = "external_out",
-                         jump = 0.01)) 
+                         jump = 0.005))
 
+filename <- "C:/0_PhD/Thesis/Thesis_R/CMP2.est"
 
-filename <- "C:/0_PhD/Thesis/Thesis_R/onlytime1.est"
-
-n_sim <- 50000
-n_burnin <- 50000
+n_sim <- 200
+n_burnin <- 200
 n_chain <- 4
-n_thin <- 250
+n_thin <- 4
 
 
 
 beep(sound = 2, estimateAccount(account = account,
-                     systemModels = systemModels,
-                     datasets = datasets,
-                     dataModels = dataModels,
-                     filename = filename,
-                     nBurnin = n_burnin,
-                     nSim = n_sim,
-                     nChain = n_chain,
-                     nThin = n_thin,
-                     useC = TRUE)
+                                systemModels = systemModels,
+                                datasets = datasets,
+                                dataModels = dataModels,
+                                filename = filename,
+                                nBurnin = n_burnin,
+                                nSim = n_sim,
+                                nChain = n_chain,
+                                nThin = n_thin,
+                                useC = TRUE)
 )
+
 
 
 fetchSummary(filename)
@@ -199,6 +180,7 @@ plot(emiest - departures, ylab="Estimate - Data",
 
 
 #-----------------------------------
+
 dplot( ~ time, data = pop.chain,
        prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
        main = "Population estimation 2006-2015",
@@ -252,20 +234,21 @@ plot(MCMC$systemModels.external_in.hyper.time.scaleError, sub=names(MCMC)[18])
 plot(MCMC$systemModels.deaths.likelihood.rate, sub=names(MCMC)[19])
 plot(MCMC$systemModels.deaths.prior.mean, sub=names(MCMC)[20])
 plot(MCMC$systemModels.deaths.hyper.time.scaleLevel, sub=names(MCMC)[21])
-plot(MCMC$systemModels.deaths.hyper.time.scaleTrend, sub=names(MCMC)[22])
-plot(MCMC$systemModels.deaths.hyper.time.scaleError, sub=names(MCMC)[23])
-plot(MCMC$systemModels.external_out.likelihood.rate, sub=names(MCMC)[24])
-plot(MCMC$systemModels.external_out.prior.mean, sub=names(MCMC)[25]) # 2014! But seems to converge at the end
-plot(MCMC$systemModels.external_out.hyper.time.scaleLevel, sub=names(MCMC)[26]) # prior ok
-plot(MCMC$systemModels.external_out.hyper.time.scaleTrend, sub=names(MCMC)[27])
-plot(MCMC$systemModels.external_out.hyper.time.scaleError, sub=names(MCMC)[28])
-plot(MCMC$dataModels.arrivals.likelihood.rate, sub=names(MCMC)[29]) # as system.model
-plot(MCMC$dataModels.arrivals.prior.mean, sub=names(MCMC)[30])
-plot(MCMC$dataModels.arrivals.hyper.time.scaleLevel, sub=names(MCMC)[31]) #...convergence?
-plot(MCMC$dataModels.arrivals.hyper.time.scaleError, sub = names(MCMC)[32])
-plot(MCMC$dataModels.departures.likelihood.rate, sub=names(MCMC)[33]) # most problematic chain
-plot(MCMC$dataModels.departures.prior.mean, sub=names(MCMC)[34]) # prior ok
-plot(MCMC$dataModels.departures.hyper.time.scaleLevel,sub=names(MCMC)[35])
-plot(MCMC$dataModels.departures.hyper.time.scaleTrend, sub=names(MCMC)[36])
-plot(MCMC$dataModels.departures.hyper.time.scaleError, sub=names(MCMC)[37])
+#plot(MCMC$systemModels.deaths.hyper.time.scaleTrend, sub=names(MCMC)[22])
+plot(MCMC$systemModels.deaths.hyper.time.scaleError, sub=names(MCMC)[22])
+plot(MCMC$systemModels.external_out.likelihood.rate, sub=names(MCMC)[23])
+plot(MCMC$systemModels.external_out.prior.mean, sub=names(MCMC)[24]) # 2014! But seems to converge at the end
+plot(MCMC$systemModels.external_out.hyper.time.scaleLevel, sub=names(MCMC)[25]) # prior ok
+# plot(MCMC$systemModels.external_out.hyper.time.scaleTrend, sub=names(MCMC)[27])
+plot(MCMC$systemModels.external_out.hyper.time.scaleError, sub=names(MCMC)[26])
+plot(MCMC$dataModels.arrivals.likelihood.rate, sub=names(MCMC)[27]) # as system.model
+plot(MCMC$dataModels.arrivals.prior.mean, sub=names(MCMC)[28])
+plot(MCMC$dataModels.arrivals.prior.sd, sub=names(MCMC)[29]) #...convergence?
+plot(MCMC$dataModels.departures.likelihood.rate, sub=names(MCMC)[30]) # most problematic chain
+plot(MCMC$dataModels.departures.prior.mean, sub=names(MCMC)[31]) # prior ok
+plot(MCMC$dataModels.departures.prior.sd, sub=names(MCMC)[32])
+
+# plot(MCMC$dataModels.departures.hyper.time.scaleLevel,sub=names(MCMC)[34])
+# plot(MCMC$dataModels.departures.hyper.time.scaleTrend, sub=names(MCMC)[35])
+# plot(MCMC$dataModels.departures.hyper.time.scaleError, sub=names(MCMC)[36])
 

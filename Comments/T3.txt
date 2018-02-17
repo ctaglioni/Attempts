@@ -1,0 +1,169 @@
+Convergence worse even for population now.
+Same system model as T2.
+Data model, population divided in two before 2013 NormalFixed and after PoissonBinomial,
+migration is not depending on time anymore and Intercepts have been reinserted.
+So population is estimated higher until 2013 and close for 2013-2015.
+Births are equally over or under estimated.
+Deaths are always lower but for 2015 where there is the largest difference.
+Immigration is always higher but in 2014-2015.
+Emigration always lower but in 2015 when is umch higher.
+
+-------------------------------------------------- 
+Account:
+*population*
+dimensions: time
+n cells: 11
+*births*
+dimensions: time
+n cells: 10
+*external_in*
+dimensions: time
+n cells: 10
+*deaths*
+dimensions: time
+n cells: 10
+*external_out*
+dimensions: time
+n cells: 10
+-------------------------------------------------- 
+System models:
+*population*
+population ~ Poisson(mean ~ time, useExpose = FALSE),
+time ~ DLM(level = Level(scale = HalfT(scale = 0.05)), trend = Trend(scale = HalfT(scale = 0.05)), 
+    damp = NULL, error = Error(scale = HalfT(scale = 0.05))),
+5e-04
+dimensions: time
+*births*
+births ~ Poisson(mean ~ time),
+time ~ DLM(level = Level(scale = HalfT(scale = 0.05)), trend = NULL, 
+    damp = NULL, error = Error(scale = HalfT(scale = 0.05))),
+0.005
+dimensions: time
+*external_in*
+external_in ~ Poisson(mean ~ time),
+time ~ DLM(level = Level(scale = HalfT(scale = 0.2)), trend = NULL, 
+    damp = NULL, error = Error(scale = HalfT(scale = 0.2))),
+0.005
+dimensions: time
+*deaths*
+deaths ~ Poisson(mean ~ time),
+time ~ DLM(trend = NULL, damp = NULL),
+0.005
+dimensions: time
+*external_out*
+external_out ~ Poisson(mean ~ time),
+time ~ DLM(level = Level(scale = HalfT(scale = 0.2)), trend = NULL, 
+    damp = NULL, error = Error(scale = HalfT(scale = 0.2))),
+0.005
+dimensions: time
+-------------------------------------------------- 
+Datasets:
+*census_year_erp1*
+Object of class "Counts"
+dimensions: time
+n cells: 8,  n missing: 0, integers: TRUE, n zeros: 0, median: 60108640
+*census_year_erp2*
+Object of class "Counts"
+dimensions: time
+n cells: 3,  n missing: 0, integers: TRUE, n zeros: 0, median: 61834619
+*reg_births*
+Object of class "Counts"
+dimensions: time
+n cells: 10,  n missing: 0, integers: TRUE, n zeros: 0, median: 550979.5
+*reg_deaths*
+Object of class "Counts"
+dimensions: time
+n cells: 10,  n missing: 0, integers: TRUE, n zeros: 0, median: 596289.5
+*arrivals*
+Object of class "Counts"
+dimensions: time
+n cells: 10,  n missing: 0, integers: TRUE, n zeros: 0, median: 375002
+*departures*
+Object of class "Counts"
+dimensions: time
+n cells: 10,  n missing: 0, integers: TRUE, n zeros: 0, median: 77575
+-------------------------------------------------- 
+Data models:
+*census_year_erp1*
+census_year_erp1 ~ NormalFixed(mean = mean, sd = sd),
+"population"
+dimensions: time
+*census_year_erp2*
+census_year_erp2 ~ PoissonBinomial(prob = 0.9),
+"population"
+dimensions: time
+*reg_births*
+reg_births ~ PoissonBinomial(prob = 0.98),
+"births"
+dimensions: time
+*reg_deaths*
+reg_deaths ~ PoissonBinomial(prob = 0.95),
+"deaths"
+dimensions: time
+*arrivals*
+arrivals ~ Poisson(mean ~ 1),
+`(Intercept)` ~ ExchFixed(sd = 0.025),
+0.8,
+1.2,
+HalfT(scale = 0.025),
+0.005,
+"external_in"
+dimensions: time
+*departures*
+departures ~ Poisson(mean ~ 1),
+`(Intercept)` ~ ExchFixed(sd = 0.025),
+0.8,
+1.2,
+HalfT(scale = 0.025),
+0.005,
+"external_out"
+dimensions: time
+-------------------------------------------------- 
+MCMC statistics:
+nBurnin: 50000,  nSim: 50000,  nChain: 4,  nThin: 250,  nIteration: 800 
+
+Metropolis-Hastings updates:
+                                           jump acceptance autocorr
+systemModels.population.likelihood.count  0.000      0.294    0.614
+systemModels.births.likelihood.rate       0.005      0.321    0.117
+systemModels.external_in.likelihood.rate  0.005      0.357    0.842
+systemModels.deaths.likelihood.rate       0.005      0.297    0.112
+systemModels.external_out.likelihood.rate 0.005      0.589    0.851
+dataModels.arrivals.likelihood.rate       0.005      0.365    0.844
+dataModels.departures.likelihood.rate     0.005      0.587    0.851
+
+parameters:
+                                                  Rhat     2.5%      50%    97.5% length
+account.population                              . 1.36 59020831 61090836 61846548     11
+account.births                                    1.01   490383   550959   581203     10
+account.external_in                             . 2.38   238859   445290   569501     10
+account.deaths                                    1.00   563449   596309   657252     10
+account.external_out                            . 1.57    51899    75851   188144     10
+systemModels.population.likelihood.count        . 1.36 59034190 61097401 61851970     11
+systemModels.population.prior.mean                1.01     12.2     17.8     18.3     11
+systemModels.population.hyper.time.scaleLevel     1.00    0.269     0.27     0.27      1
+systemModels.population.hyper.time.scaleTrend     1.00    0.256    0.266     0.27      1
+systemModels.population.hyper.time.scaleError     1.00    0.268     0.27     0.27      1
+systemModels.births.likelihood.rate               1.08  0.00793  0.00903  0.00969     10
+systemModels.births.prior.mean                    1.01    -4.84    -4.71    -4.63     10
+systemModels.births.hyper.time.scaleLevel         1.00   0.0207   0.0344   0.0497      1
+systemModels.births.hyper.time.scaleError         1.00  0.00515   0.0184   0.0662      1
+systemModels.external_in.likelihood.rate        . 2.38  0.00387  0.00724  0.00953     10
+systemModels.external_in.prior.mean               1.06    -5.53    -4.95    -4.57     10
+systemModels.external_in.hyper.time.scaleLevel    1.01   0.0479    0.164    0.331      1
+systemModels.external_in.hyper.time.scaleError    1.01   0.0605      0.2    0.511      1
+systemModels.deaths.likelihood.rate               1.08  0.00951  0.00979   0.0106     10
+systemModels.deaths.prior.mean                  . 1.11    -4.75    -4.63    -4.53     10
+systemModels.deaths.hyper.time.scaleLevel         1.02  0.00331   0.0264    0.093      1
+systemModels.deaths.hyper.time.scaleError         1.04   0.0121   0.0381    0.149      1
+systemModels.external_out.likelihood.rate       . 1.57 0.000872  0.00124  0.00305     10
+systemModels.external_out.prior.mean              1.05    -7.08    -6.59    -5.81     10
+systemModels.external_out.hyper.time.scaleLevel   1.00   0.0855     0.19    0.327      1
+systemModels.external_out.hyper.time.scaleError   1.01   0.0631    0.179    0.675      1
+dataModels.arrivals.likelihood.rate             . 2.31    0.802    0.892      1.2     10
+dataModels.arrivals.prior.mean                    1.02  -0.0653  -0.0342   0.0253     10
+dataModels.arrivals.prior.sd                      1.01   0.0882    0.109     0.13      1
+dataModels.departures.likelihood.rate           . 1.50    0.805     1.01     1.18     10
+dataModels.departures.prior.mean                . 1.10  -0.0303 -0.00183   0.0457     10
+dataModels.departures.prior.sd                    1.02   0.0563   0.0861    0.121      1
+-------------------------------------------------- 
