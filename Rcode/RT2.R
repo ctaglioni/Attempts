@@ -190,16 +190,6 @@ plot(popest[11,] - population[11,], main = "Population: estimation vs data 2015"
 axis(1,at = 1:22 , labels = dimnames(popest)[[2]], cex.axis=0.4, las = 3)
 abline(h=0)
 
-# plot(popest[2:11,1] - population[2:11,1], main = "Piemonte population: estimation vs data 2015",
-#      type = "l", ylim=c(min(popest[2:11,] - population[2:11,]),
-#                         max(popest[2:11,] - population[2:11,])),
-#      xlab = "Year", ylab = "Diff", xaxt = "n", pch = 18)
-# axis(1,at = 1:10 , labels = dimnames(popest)[[1]][2:11])
-# abline(h=0)
-# for (i in 2:22){
-#   lines(popest[2:11,i] - population[2:11,i], col=i)
-# }
-
 plot(birest[10,] - reg_births[10,], main = "Births: estimation vs data 2015",
      xlab = "Regions", ylab = "Diff", xaxt = "n", pch = 18)
 axis(1,at = 1:22 , labels = dimnames(birest)[[2]], cex.axis=0.4, las = 3)
@@ -229,6 +219,63 @@ plot(einest[10,] - intdep[10,], main = "Int emigration: estimation vs data 2015"
      xlab = "Regions", ylab = "Diff", xaxt = "n", pch = 18)
 axis(1,at = 1:22 , labels = dimnames(einest)[[2]], cex.axis=0.4, las = 3)
 abline(h=0)
+
+par(mfrow=c(1,1))
+plot(popest[2:11,1] - population[2:11,1], main = "Piemonte population: estimation vs data",
+     type = "l", ylim=c(min(popest[2:11,] - population[2:11,]),
+                        max(popest[2:11,] - population[2:11,])),
+     xlab = "Year", ylab = "Diff", xaxt = "n", pch = 18)
+axis(1,at = 1:10 , labels = dimnames(popest)[[1]][2:11])
+abline(h=0)
+for (i in 2:22){
+  lines(popest[2:11,i] - population[2:11,i], col=i)
+}
+
+
+plot(immest[2:10,1] - arrivals [2:10,1], main = "External immigration",
+     type = "l", ylim=c(min(immest[2:10,] - arrivals[2:10,]),
+                        max(immest[2:10,] - arrivals[2:10,])),
+     xlab = "Year", ylab = "Diff", xaxt = "n", pch = 18)
+axis(1,at = 1:10 , labels = dimnames(popest)[[1]][2:11])
+abline(h=0)
+for (i in 2:22){
+  lines(immest[2:10,i] - arrivals[2:10,i], col=i)
+}
+legend("topright", dimnames(immest)[[2]], lty=1, col = 2:22, cex = 0.5)
+
+
+plot(emiest[2:10,1] - departures [2:10,1], main = "External emigration",
+     type = "l", ylim=c(min(emiest[2:10,] - departures[2:10,]),
+                        max(emiest[2:10,] - departures[2:10,])),
+     xlab = "Year", ylab = "Diff", xaxt = "n", pch = 18)
+axis(1,at = 1:10 , labels = dimnames(popest)[[1]][2:11])
+abline(h=0)
+for (i in 2:22){
+  lines(emiest[2:10,i] - departures[2:10,i], col=i)
+}
+legend("topright", dimnames(popest)[[2]], lty=1, col = 2:22, cex = 0.5)
+
+plot(iinest[2:10,1] - intarr [2:10,1], main = "Internal immigration",
+     type = "l", ylim=c(min(iinest[2:10,] - intarr[2:10,]),
+                        max(iinest[2:10,] - intarr[2:10,])),
+     xlab = "Year", ylab = "Diff", xaxt = "n", pch = 18)
+axis(1,at = 1:10 , labels = dimnames(popest)[[1]][2:11])
+abline(h=0)
+for (i in 2:22){
+  lines(iinest[2:10,i] - intarr[2:10,i], col=i)
+}
+legend("topright", dimnames(popest)[[2]], lty=1, col = 2:22, cex = 0.5)
+
+plot(einest[2:10,1] - intdep [2:10,1], main = "Internal emigration",
+     type = "l", ylim=c(min(einest[2:10,] - intdep[2:10,]),
+                        max(einest[2:10,] - intdep[2:10,])),
+     xlab = "Year", ylab = "Diff", xaxt = "n", pch = 18)
+axis(1,at = 1:10 , labels = dimnames(popest)[[1]][2:11])
+abline(h=0)
+for (i in 2:22){
+  lines(einest[2:10,i] - intdep[2:10,i], col=i)
+}
+legend("topright", dimnames(popest)[[2]], lty=1, col = 2:22, cex = 0.5)
 
 
 par(mfrow=c(1,1))
