@@ -94,15 +94,12 @@ dataModels <- list(Model(census_year_erp ~ NormalFixed(mean = mean, sd = sd),
                          series = "deaths"),
                    Model(arrivals ~ CMP(mean ~ 1,
                                         dispersion = Dispersion(mean = Norm(mean = 0,
-                                                                            sd = 0.1),
+                                                                            sd = 1),
                                                                 scale = HalfT(scale = 0.1))),
                          series = "external_in",
                          jump = 0.005),
-                   Model(departures ~ CMP(mean ~ 1,
-                                          dispersion = Dispersion(mean = Norm(mean = 0, sd = 0.1),
-                                                                  scale = HalfT(scale = 0.1))),
-                         series = "external_out",
-                         jump = 0.005))
+                   Model(departures ~ PoissonBinomial(prob = 0.95),
+                         series = "external_out"))
 
 filename <- "C:/0_PhD/Thesis/Thesis_R/CMP2.est"
 

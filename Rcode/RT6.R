@@ -111,41 +111,45 @@ datasets <- list(census_year_erp1 = cy1,
                  intarr = intarr,
                  intdep = intdep)
 
+sd <- 0.0025 * as(census_year_erp, "Values")
+mean <- sd / sd
 
+sd1 <- 0.0025 * as(arrivals, "Values")
+mean1 <- sd1 / sd1
 
-dataModels <- list(Model(census_year_erp1 ~ Poisson(mean ~ region),
-                         series = "population",
-                         jump = 0.002),
+sd2 <- 0.0025 * as(departures, "Values")
+mean2 <- sd2 / sd2
+
+sd3 <- 0.0025 * as(intarr, "Values")
+mean3 <- sd3 / sd3
+
+sd4 <- 0.0025 * as(intdep, "Values")
+mean4 <- sd4 / sd4
+
+dataModels <- list(Model(census_year_erp1 ~ NormalFixed(mean = mean, sd = sd),
+                         series = "population"),
                    Model(census_year_erp2 ~ PoissonBinomial(prob = 0.95),
                          series = "population"),
                    Model(reg_births ~ PoissonBinomial(prob = 0.95),
                          series = "births"),
                    Model(reg_deaths ~ PoissonBinomial(prob = 0.90),
                          series = "deaths"),
-                   Model(arrivals ~ Poisson(mean ~ region),
-                         region ~ Exch(),
-                         series = "external_in",
-                         jump = 0.03),
-                   Model(departures ~ Poisson(mean ~ region),
-                         region ~ Exch(),
-                         series = "external_out",
-                         jump = 0.03),
-                   Model(intarr ~ Poisson(mean ~ region),
-                         region ~ Exch(),
-                         series = "internal_in",
-                         jump = 0.03),
-                   Model(intdep ~ Poisson(mean ~ region),
-                         region ~ Exch(),
-                         series = "internal_out",
-                         jump = 0.03))
+                   Model(arrivals ~ NormalFixed(mean = mean1, sd = sd1),
+                         series = "external_in"),
+                   Model(departures ~ NormalFixed(mean = mean2, sd = sd2),
+                         series = "external_out"),
+                   Model(intarr ~ NormalFixed(mean = mean3, sd = sd3),
+                         series = "internal_in"),
+                   Model(intdep ~ NormalFixed(mean = mean4, sd = sd4),
+                         series = "internal_out"))
 
 
 onlyreg <- "C:/0_PhD/Thesis/Thesis_R/RT6.est"
 
-n_sim <- 5000
-n_burnin <- 5000
+n_sim <- 50000
+n_burnin <- 50000
 n_chain <- 3
-n_thin <- 50
+n_thin <- 300
 
 beep(sound=2, estimateAccount(account = account,
                 systemModels = systemModels,
