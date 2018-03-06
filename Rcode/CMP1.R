@@ -408,8 +408,6 @@ plot(MCMC$model.prior.dispersion.sd, main= "Prior dispersion sd" )
 plot(MCMC$model.prior.rate.mean, sub= "Prior rate mean" )
 plot(MCMC$model.prior.rate.sd, sub= "Prior rate sd" )
 
-
-
 #------------------------------
 # Deaths without exposure
 #------------------------------
@@ -448,19 +446,19 @@ disp.prior <- fetch(filename, where=c("model", "prior", "dispersion", "mean"))
 deaest<- apply(dea.chain, c(1,2,3), mean)
 dispest<- apply(disp.lik, c(1,2,3), mean)
 par(mfrow=c(1,1))
-plot(deaest[,7,11] - italy.deaths.reg[,7,11], main = "deaths: estimation vs data 2015",
+plot(deaest[,1,1] - italy.deaths.reg[,1,1,10], main = "deaths: estimation vs data 2015",
      xlab = "Regions", ylab = "Diff", pch = 18)
 
 dplot( ~ age | region, data = dea.chain, subarray = time == "2012",
        prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
        main = "deaths estimation")
 
-dplot( ~ age | region, data = disp.lik, subarray = time == "2012",
+dplot( ~ age | region, data = disp.lik[,1,,,], subarray = time == "2012",
        prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
        main = "deaths estimation")
 
 
-dplot( ~ age | region, data = Counts(deaest, dimscales = c(time = "Intervals")),
+dplot( ~ age | region , data = Counts(deaest, dimscales = c(time = "Intervals")),
        subarray = time == "2012",
        prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
        main = "deaths estimation",
@@ -490,24 +488,24 @@ y <- italy.deaths.reg %>%
 expose <- italy.popn.reg %>%
   Counts(dimscales = c(time = "Intervals"))
 
-filename <- tempfile()
+filename <- "C:/0_PhD/Thesis/Thesis_R/CMP1_death_exp1.est"
 
 estimateModel(Model(y ~ CMP(mean ~ age + region + time,
                             dispersion = Dispersion(mean = Norm(mean = 0, sd = 1),
                                                     scale = HalfT(scale = 0.1))),
-                    age ~ DLM(damp = NULL),
+                    age ~ DLM(),
                     jump = 0.02),
               y = y,
               exposure = expose,
               filename = filename,
-              nBurnin = 300000,
-              nSim = 300000,
+              nBurnin = 30000,
+              nSim = 30000,
               nChain = 3,
-              nThin = 1000)
+              nThin = 300)
 
-continueEstimation(filename,nBurnin = 30000,
-                   nSim = 30000,
-                   nThin = 750)
+# continueEstimation(filename,nBurnin = 30000,
+#                    nSim = 30000,
+#                    nThin = 750)
 
 fetchSummary(filename)
 showModel(filename)
