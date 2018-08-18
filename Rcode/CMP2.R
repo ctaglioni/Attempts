@@ -7,10 +7,9 @@ library(demItaly)
 library(abind)
 library(beepr)
 
-dimnames(italy.popn.reg)$time <- 2001:2016
-census_year_erp<- Counts(italy.popn.reg, dimscales = c(time="Points")) %>%
+dimnames(italy.popn.reg)$time <- 2005:2016
+census_year_erp<- Counts(italy.popn.reg[,,15:20,], dimscales = c(time="Points")) %>%
   subarray(time !="2016") %>%
-  subarray(time >"2004") %>%
   collapseDimension(margin = "time")
 
 #dim(italy.popn.reg)
@@ -18,18 +17,18 @@ census_year_erp<- Counts(italy.popn.reg, dimscales = c(time="Points")) %>%
 
 population <- census_year_erp
 
-reg_births<- Counts(italy.births.reg, dimscales = c(time="Intervals")) %>%
+reg_births<- Counts(italy.births.reg[15:20,,], dimscales = c(time="Intervals")) %>%
   subarray(time !="2016") %>%
   collapseDimension(margin = "time")
 
-reg_deaths <- Counts(italy.deaths.reg, dimscales = c(time="Intervals")) %>%
+reg_deaths <- Counts(italy.deaths.reg[,,15:20,], dimscales = c(time="Intervals")) %>%
   collapseDimension(margin = "time")
 
-arrivals <- Counts(italy.ext.in , dimscales = c(time="Intervals")) %>%
+arrivals <- Counts(italy.ext.in[,,15:20,], dimscales = c(time="Intervals")) %>%
   subarray(time !="2016") %>%
   collapseDimension(margin = "time")
 
-departures <- Counts(italy.ext.out, dimscales = c(time="Intervals")) %>%
+departures <- Counts(italy.ext.out[,,15:20,], dimscales = c(time="Intervals")) %>%
   subarray(time !="2016") %>%
   collapseDimension(margin = "time")
 
@@ -86,27 +85,39 @@ sd<- sd * 0.0025
 mean <- sd / sd
 
 
-dataModels <- list(Model(census_year_erp ~ NormalFixed(mean = mean, sd = sd),
+dataModels <- list(Model(census_year_erp ~ CMP(mean ~ time,
+                                               dispersion = Dispersion(mean = Norm(mean = 1,
+                                                                                   sd = 0.2),
+                                                                       scale = HalfT(scale = 0.1))),
                          series = "population"),
-                   Model(reg_births ~ PoissonBinomial(prob = 0.98),
+                   Model(reg_births ~ CMP(mean ~ time,
+                                          dispersion = Dispersion(mean = Norm(mean = 2,
+                                                                              sd = 0.3),
+                                                                  scale = HalfT(scale = 0.1))),
                          series = "births"),
-                   Model(reg_deaths ~ PoissonBinomial(prob = 0.95),
+                   Model(reg_deaths ~ CMP(mean ~ time,
+                                          dispersion = Dispersion(mean = Norm(mean = 2,
+                                                                              sd = 0.3),
+                                                                  scale = HalfT(scale = 0.1))),
                          series = "deaths"),
-                   Model(arrivals ~ CMP(mean ~ 1,
+                   Model(arrivals ~ CMP(mean ~ time,
                                         dispersion = Dispersion(mean = Norm(mean = 0,
                                                                             sd = 1),
                                                                 scale = HalfT(scale = 0.1))),
                          series = "external_in",
                          jump = 0.005),
-                   Model(departures ~ PoissonBinomial(prob = 0.95),
+                   Model(departures ~ CMP(mean ~ time,
+                                          dispersion = Dispersion(mean = Norm(mean = 0,
+                                                                              sd = 0.5),
+                                                                  scale = HalfT(scale = 0.1))),
                          series = "external_out"))
 
-filename <- "C:/0_PhD/Thesis/Thesis_R/CMP2.est"
+filename <- "C:/0_PhD/Thesis/Thesis_R/CMP2_allCMP.est"
 
-n_sim <- 200
-n_burnin <- 200
-n_chain <- 4
-n_thin <- 4
+n_sim <- 100000
+n_burnin <- 100000
+n_chain <- 3
+n_thin <- 500
 
 
 

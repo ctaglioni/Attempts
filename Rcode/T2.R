@@ -7,7 +7,7 @@ library(demItaly)
 library(abind)
 library(beepr)
 
-dimnames(italy.popn.reg)$time <- 2001:2016
+dimnames(italy.popn.reg)$time <- 2005:2016
 census_year_erp<- Counts(italy.popn.reg, dimscales = c(time="Points")) %>%
   subarray(time !="2016") %>%
   subarray(time >"2004") %>%
@@ -113,10 +113,10 @@ dataModels <- list(Model(census_year_erp ~ NormalFixed(mean = mean, sd = sd),
 
 filename <- "C:/0_PhD/Thesis/Thesis_R/onedim2.est"
 
-n_sim <- 50000
-n_burnin <- 50000
+n_sim <- 200000
+n_burnin <- 200000
 n_chain <- 4
-n_thin <- 200
+n_thin <- 800
 
 
 
@@ -132,7 +132,9 @@ beep(sound = 2, estimateAccount(account = account,
                                 useC = TRUE)
 )
 
-
+continueEstimation(filename, nBurnin = n_burnin,
+                   nSim = n_sim,
+                   nThin = n_thin)
 
 fetchSummary(filename)
 

@@ -7,10 +7,9 @@ library(demItaly)
 library(abind)
 library(beepr)
 
-dimnames(italy.popn.reg)$time <- 2001:2016
+dimnames(italy.popn.reg)$time <- 2005:2016
 census_year_erp<- Counts(italy.popn.reg, dimscales = c(time="Points")) %>%
   subarray(time !="2016") %>%
-  subarray(time >"2004") %>%
   collapseDimension(margin = "time")
 
 #dim(italy.popn.reg)
@@ -112,7 +111,7 @@ filename <- "C:/0_PhD/Thesis/Thesis_R/onedim1.est"
 n_sim <- 200000
 n_burnin <- 200000
 n_chain <- 4
-n_thin <- 800
+n_thin <- 500
 
 
 
@@ -209,7 +208,7 @@ dplot( ~ time, data = emi.chain,
        main = "Emigration estimation 2006-2015",
        overlay = list(values = departures, col = "red", lwd= 2))
 
-
+population
 #------------------------------
 
 MCMC <- fetchMCMC(filename)

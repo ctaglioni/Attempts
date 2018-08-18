@@ -4,7 +4,25 @@ library(demest)
 library(demItaly)
 library(demCMP)
 library(beepr)
+library(LaplacesDemon)
 
+mu <- 1000
+nu1 <- seq(0.1,0.9, by=0.1)
+nu2 <- as.numeric(seq(2, 10))
+par(mfrow=c(3,3))
+for( i in seq(nu1)){
+hist(replicate(10000, rcmp1(mu = mu, nu = nu1[i] , max = 10000)))
+}
+
+par(mfrow=c(3,3))
+for( i in seq(nu2)){
+  hist(replicate(10000, rcmp1(mu = mu, nu = nu2[i] , max = 10000)))
+}
+
+par(mfrow=c(1,2))
+hist(replicate(10000, rcmp1(mu = mu, nu = 20 , max = 10000)))
+
+vote <- read.csv("C:\\Users\\Cha\\Desktop\\Other datasets\\europee_2014_eletvotae_0.csv", header = TRUE, sep=";")
 
 #---------------------------------------------------
 # Simulated underdispersed data coverage regression
@@ -105,11 +123,11 @@ plot(rateest[,1,1,1]*expodem[,1,1,1] - yy[,1,1,1], main = "estimation vs data 20
 
 
 dplot( ~ age | region, data = rate.lik[,1,,,], subarray = time == "2015",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "Rate estimation")
 
 dplot( ~ age | region, data = disp.lik[,1,,,], subarray = time == "2015",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "Dispersion estimation")
 
 plot(rateest - array(gamma, dim=c(5, 2, 10, 3)))
@@ -128,29 +146,37 @@ plot(MCMC$model.prior.rate.mean, sub= "Prior rate mean" )
 plot(MCMC$model.prior.rate.sd, sub= "Prior rate sd" )
 
 
-
-
-
-
-
 #---------------------------------------------------
-# Simulated underdispersed data coverage more random
+# Simulated underdispersed data unique nu
 #---------------------------------------------------
 
-mu <- -0.1
-sigma <- 0.1
-eta <- -0.2
-tau <- 0.05
-expo <- replicate(2000, rcmp1(mu = 1000, nu = 1 , max = 10000))
-gamma<- exp(rnorm(2000, mean = mu, sd = sigma))
-nu <- exp(rnorm(2000, mean = eta, sd = tau))
+beta0 <- rnorm(1,0,0.5)
+tau1 <- 1 / rgamma(1, shape = 10, scale = 0.1)
+beta1 <- rnorm(1, 0, tau1)
+
+mu <- beta0 + beta1
+sigma <- 1 / rgamma(1, shape = 10, scale = 0.1)
+
+eta <- rnorm(1,0,0.5)
+tau <- 1 / rgamma(1, shape = 10, scale = 0.1)
+
+expo <- rpois(200, 1000)
+library(demCMP)
+gamma<- exp(rnorm(200, mean = mu, sd = sigma))
+nu <- exp(rnorm(1, mean = eta, sd = tau))
 mu.cmp<- expo*gamma
 y <- c()
 for(i in 1:length(expo)){
-  y[i] <- rcmp1(mu=mu.cmp[i], nu=nu[i], max=1000)
+  y[i] <- rcmp1(mu=mu.cmp[i], nu=nu, max=1000)
 }
+which(is.na(y))
 
+#-------------------------------------------------
+# Estimetion with demest
+#-------------------------------------------------
 expodem <- array(expo, dim=c(5, 2, 10, 2))
+library(abind)
+#expodem <- abind(array(rpois(1000, 1000),dim=c(5, 2, 10, 1)), expodem, along=4)
 dimnames(expodem) <- list(age = 1:5,
                           sex = c("f","m"),
                           region = letters[1:10],
@@ -161,27 +187,24 @@ dimnames(ydem) <- list(age = 1:5,
                        sex = c("f","m"),
                        region = letters[1:10],
                        time = 2015:2016)
-
-yy <- Counts(ydem, dimscales = c(time ="Intervals"))
-exx <- Counts(expodem, dimscales = c(time ="Intervals"))
+yy <- Counts(ydem, dimscales = c(time="Intervals"))
+exx <- Counts(expodem, dimscales = c(time="Intervals"))
+#exx <- exposure(exx)
 
 filename <- tempfile()
 
 beep(sound=2, estimateModel(Model(yy ~ CMP(mean ~ 1,
-                             dispersion = Dispersion(mean = Norm(mean = -0.25, sd = 0.07),
-                                                     scale = HalfT(scale = 0.3))),
-                    jump = 0.03),
-              y = yy,
-              exposure = exx,
-              filename = filename,
-              nBurnin = 500000,
-              nSim = 500000,
-              nChain = 3,
-              nThin = 1000))
+                                           dispersion = Dispersion(mean = Norm(mean = 0, sd = 2),
+                                                                   scale = HalfT(scale = 0.1))),
+                                  jump = 0.03),
+                            y = yy,
+                            exposure = exx,
+                            filename = filename,
+                            nBurnin = 1000000,
+                            nSim = 1000000,
+                            nChain = 3,
+                            nThin = 400))
 
- beep(sound=2,continueEstimation(filename,nBurnin = 300000,
-                   nSim = 300000,
-                   nThin = 1000))
 
 fetchSummary(filename)
 showModel(filename)
@@ -200,11 +223,11 @@ plot(rateest[,1,1,1]*expodem[,1,1,1] - yy[,1,1,1], main = "estimation vs data 20
 
 
 dplot( ~ age | region, data = rate.lik[,1,,,], subarray = time == "2015",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "Rate estimation")
 
 dplot( ~ age | region, data = disp.lik[,1,,,], subarray = time == "2015",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "Dispersion estimation")
 
 plot(rateest - array(gamma, dim=c(5, 2, 10, 2)))
@@ -222,7 +245,140 @@ plot(MCMC$model.prior.dispersion.sd, main= "Prior dispersion sd" )
 plot(MCMC$model.prior.rate.mean, sub= "Prior rate mean" )
 plot(MCMC$model.prior.rate.sd, sub= "Prior rate sd" )
 
+#-----------------------------------
+#-----------------------------------
+n_sim <- 10000
+output <- mcmc.dem.lo.un(y, n_sim, expo, lambda0 = rep(0,length(y)), omega0 = 0,
+                            mu, sigma, eta, tau,
+                            mean.lambda.cand = 0, mean.omega.cand = 0,
+                            sd.lambda.cand = 0.1, sd.omega.cand = 0.1,
+                            "RW")
 
+iter <- 10000
+output <- mcmc.dem.kvslom.un(y, iter, expo, lambda0 = rep(0,length(y)), omega0 = 0,
+                               mu0 = 0, sigma, eta0 = 0, tau,
+                               alpha0 = 0, beta0 = 1, delta0 = 0, xi0 = 1,
+                               mean.lambda.cand = 0, mean.omega.cand = 0,
+                               sd.lambda.cand = 0.1, sd.omega.cand = 0.05,
+                               "RW")
+
+niter <- 500
+output <- mcmc.dem.IG.un(y, niter, expo, lambda0 = rep(0,length(y)), omega0 = 0,
+                           mu0 = 0, sigma0 = 10, eta0 = 0, tau0 = 10,
+                           alpha0 = 0, beta0 = 1, delta0 = 0, xi0 = 1,
+                           sh.sigma0 = 5, sh.tau0 = 5,
+                           sc.sigma0 = 0.1, sc.tau0 = 0.1,
+                           mean.lambda.cand = 0, mean.omega.cand = 0,
+                           sd.lambda.cand = 0.2, sd.omega.cand = 0.2,
+                           "RW")
+niter <- 1000
+output <- mcmc.dem.UnInf.un(y, niter, expo, lambda0 = rep(0,length(y)), omega0 = 0,
+                              mu0 = 0, sigma0 = 1, eta0 = 0, tau0 = 1,
+                              alpha0 = 5, beta0 = 5, delta0 = 5, xi0 = 5,
+                              mean.lambda.cand = 0, mean.omega.cand = 0,
+                              sd.lambda.cand = 0.5, sd.omega.cand = 0.5,
+                              "RW")
+
+output <- mcmc.dem.UnInf.un.bis(y, niter, expo, lambda0 = rep(0,length(y)), omega0 = 0,
+                                                 mu0 = 0, sigma0 = 1, eta0 = 5, tau0 = 1,
+                                                 alpha0 = 0, beta0 = 5, delta0 = 0, xi0 = 5,
+                                                 mean.lambda.cand = 0, mean.omega.cand = 0,
+                                                 sd.lambda.cand = 0.2, sd.omega.cand = 0.2,
+                                                 "RW")
+
+#---------------------------------------------------
+# Simulated underdispersed data coverage more random
+#---------------------------------------------------
+beta0 <- rnorm(1)
+tau1 <- rhalft(1,0.3,0.5)
+beta1 <- rnorm(1, 0, tau1)
+
+mu <- beta0 + beta1
+sigma <- rhalft(1, 1, 0.5)
+
+eta <- rnorm(1,2,0.3)
+tau <- rhalft(1, 0.3, 0.5)
+
+expo <- rpois(2000, 1000)
+
+gamma<- exp(rnorm(2000, mean = mu, sd = sigma))
+nu <- exp(rnorm(2000, mean = eta, sd = tau))
+mu.cmp<- expo*gamma
+y <- c()
+for(i in 1:length(expo)){
+  y[i] <- rcmp1(mu=mu.cmp[i], nu=nu[i], max=1000)
+}
+which(is.na(y))
+expodem <- array(expo, dim=c(5, 2, 10, 2))
+dimnames(expodem) <- list(age = 1:5,
+                          sex = c("f","m"),
+                          region = letters[1:10],
+                          time = 2015:2016)
+
+ydem <- array(y, dim=c(5, 2, 10, 2))
+dimnames(ydem) <- list(age = 1:5,
+                       sex = c("f","m"),
+                       region = letters[1:10],
+                       time = 2015:2016)
+
+yy <- Counts(ydem, dimscales = c(time ="Intervals"))
+exx <- Counts(expodem, dimscales = c(time ="Intervals"))
+
+filename <- tempfile()
+
+beep(sound=2, estimateModel(Model(yy ~ CMP(mean ~ 1,
+                             dispersion = Dispersion(mean = Norm(mean = 0, sd = 10),
+                                                     scale = HalfT(scale = 1))),
+                    jump = 0.03),
+              y = yy,
+              exposure = exx,
+              filename = filename,
+              nBurnin = 800000,
+              nSim = 800000,
+              nChain = 3,
+              nThin = 1000))
+
+#beep(sound=2,continueEstimation(filename,nBurnin = 300000,
+ #                  nSim = 300000,
+  #                 nThin = 1000))
+eta
+fetchSummary(filename)
+showModel(filename)
+listContents(filename)
+
+rate.lik <- fetch(filename, where=c("model", "likelihood", "rate"))
+disp.lik <- fetch(filename, where=c("model", "likelihood", "dispersion"))
+disp.prior <- fetch(filename, where=c("model", "prior", "dispersion", "mean"))
+rate.prior <- fetch(filename, where=c("model", "prior", "rate", "mean"))
+
+rateest<- apply(rate.lik, c(1,2,3,4), mean)
+dispest <- apply(disp.lik, c(1,2,3,4), mean)
+par(mfrow=c(1,1))
+plot(rateest[,1,1,1]*expodem[,1,1,1] - yy[,1,1,1], main = "estimation vs data 2015",
+     xlab = "Age", ylab = "Diff", pch = 18)
+
+
+dplot( ~ age | region, data = rate.lik[,1,,,], subarray = time == "2015",
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
+       main = "Rate estimation")
+dplot( ~ age | region, data = disp.lik[,1,,,], subarray = time == "2015",
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
+       main = "Dispersion estimation")
+
+plot(rateest - array(gamma, dim=c(5, 2, 10, 2)))
+abline(h=0)
+
+plot(dispest - array(nu, dim=c(5, 2, 10, 2)))
+abline(h=0)
+
+MCMC <-fetchMCMC(filename)
+
+plot(MCMC$model.likelihood.rate, sub= "Likelihood rate")
+plot(MCMC$model.likelihood.dispersion, sub= "Likelihood dispersion" )
+plot(MCMC$model.prior.dispersion.mean, main= "Prior dispersion mean")
+plot(MCMC$model.prior.dispersion.sd, main= "Prior dispersion sd" )
+plot(MCMC$model.prior.rate.mean, sub= "Prior rate mean" )
+plot(MCMC$model.prior.rate.sd, sub= "Prior rate sd" )
 
 
 #------------------------------------------
@@ -292,11 +448,11 @@ plot(rateest[,1,1,1]*expodem[,1,1,1] - yy[,1,1,1], main = "estimation vs data 20
 
 
 dplot( ~ age | region, data = rate.lik[,1,,,], subarray = time == "2015",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "Rate estimation")
 
 dplot( ~ age | region, data = disp.lik[,1,,,], subarray = time == "2015",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "Dispersion estimation")
 
 plot(rateest - array(gamma, dim=c(5, 2, 10, 2)))
@@ -383,7 +539,7 @@ plot(birest[,,1,1]*expodem[,,1,1] - yy[,,1,1], main = "Births: estimation vs dat
      xlab = "Regions", ylab = "Diff", pch = 18)
 
 dplot( ~ age | region, data = bir.chain[,1,,,], subarray = time == "2015",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "Births estimation")
 
 plot(birest - array(gamma, dim=c(5, 2, 10, 2)))
@@ -394,7 +550,7 @@ abline(h=0)
 
 data <- Counts(birest[,,11]*expose[,,15])
 dplot( ~ age | region, data = data,
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "Births estimation",
        overlay = list(values = Counts(italy.births.reg[,,11]), col = "red", lwd= 2))
 
@@ -407,6 +563,83 @@ plot(MCMC$model.prior.dispersion.mean, main= "Prior dispersion mean")
 plot(MCMC$model.prior.dispersion.sd, main= "Prior dispersion sd" )
 plot(MCMC$model.prior.rate.mean, sub= "Prior rate mean" )
 plot(MCMC$model.prior.rate.sd, sub= "Prior rate sd" )
+
+##########################################################
+### True data
+##########################################################
+
+#------------------------------
+# Deaths without exposure reduced
+#----------------------------
+y <- italy.deaths.reg[,1,1:10,5:10] %>%
+  Counts(dimscales = c(time = "Intervals"))
+
+filename <- "C:/0_PhD/Thesis/Thesis_R/CMP1_D_partial2.est"
+
+estimateModel(Model(y ~ CMP(mean ~ 1,
+                            dispersion = Dispersion(mean = Norm(mean = 0
+                                                                , sd = 1),
+                                                    scale = HalfT(scale = 0.05)),
+                            useExpose = FALSE),
+                    jump = 0.03),
+              y = y,
+              filename = filename,
+              nBurnin = 300000,
+              nSim = 300000,
+              nChain = 3,
+              nThin = 250)
+
+# continueEstimation(filename,nBurnin = 60000,
+#                    nSim = 60000,
+#                    nThin = 750)
+
+fetchSummary(filename)
+showModel(filename)
+listContents(filename)
+
+dea.chain <- fetch(filename, where=c("model", "likelihood", "count"))
+disp.lik <- fetch(filename, where=c("model", "likelihood", "dispersion"))
+disp.prior <- fetch(filename, where=c("model", "prior", "dispersion", "mean"))
+
+
+deaest<- apply(dea.chain, c(1,2,3), mean)
+dispest<- apply(disp.lik, c(1,2,3), mean)
+par(mfrow=c(1,1))
+dim(deaest)
+dimnames(italy.deaths.reg)
+plot(deaest[,1,6] - italy.deaths.reg[,1,1,10], main = "deaths: estimation vs data Piemonte 2015",
+     xlab = "Age groups", ylab = "Diff", pch = 18)
+
+dplot( ~ age | region, data = dea.chain[,,,], subarray = time == "2012",
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
+       main = "deaths estimation")
+
+dplot( ~ age | region, data = disp.lik[,,,], subarray = time == "2012",
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
+       main = "deaths estimation")
+
+
+dplot( ~ age | region , data = Counts(deaest, dimscales = c(time = "Intervals")),
+       subarray = time == "2012",
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
+       main = "deaths estimation",
+       overlay = list(values = Counts(italy.deaths.reg[,1,,10]), col = "red", lwd= 2))
+
+
+MCMC <-fetchMCMC(filename)
+
+plot(MCMC$model.likelihood.count, sub= "Likelihood counts")
+plot(MCMC$model.likelihood.dispersion, sub= "Likelihood dispersion" )
+plot(MCMC$model.prior.dispersion.mean, main= "Prior dispersion mean")
+plot(MCMC$model.prior.dispersion.sd, main= "Prior dispersion sd" )
+plot(MCMC$model.hyper.age.scaleLevel, sub= "Hyper age scale level" )
+plot(MCMC$model.prior.count.mean, sub= "Prior count mean" )
+plot(MCMC$model.prior.count.sd, sub= "Prior count sd" )
+plot(MCMC$model.hyper.age.scaleTrend, sub= "Hyper age scale trend")
+plot(MCMC$model.hyper.age.scaleError, sub= "Hyper age scale error" )
+plot(MCMC$model.hyper.year.damp, sub= "Hyper year damp" )
+plot(MCMC$model.hyper.year.scaleError, sub= "Hyper year scale error" )
+
 
 #------------------------------
 # Deaths without exposure
@@ -443,26 +676,26 @@ disp.lik <- fetch(filename, where=c("model", "likelihood", "dispersion"))
 disp.prior <- fetch(filename, where=c("model", "prior", "dispersion", "mean"))
 
 
-deaest<- apply(dea.chain, c(1,2,3), mean)
-dispest<- apply(disp.lik, c(1,2,3), mean)
+deaest<- apply(dea.chain, c(1,2,3,4), mean)
+dispest<- apply(disp.lik, c(1,2,3,4), mean)
 par(mfrow=c(1,1))
-plot(deaest[,1,1] - italy.deaths.reg[,1,1,10], main = "deaths: estimation vs data 2015",
+plot(deaest[,1,,10] - italy.deaths.reg[,1,,10], main = "deaths: estimation vs data 2015",
      xlab = "Regions", ylab = "Diff", pch = 18)
 
-dplot( ~ age | region, data = dea.chain, subarray = time == "2012",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+dplot( ~ age | region, data = dea.chain[,1,,,], subarray = time == "2012",
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "deaths estimation")
 
 dplot( ~ age | region, data = disp.lik[,1,,,], subarray = time == "2012",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "deaths estimation")
 
 
 dplot( ~ age | region , data = Counts(deaest, dimscales = c(time = "Intervals")),
        subarray = time == "2012",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "deaths estimation",
-       overlay = list(values = Counts(italy.deaths.reg[,,11]), col = "red", lwd= 2))
+       overlay = list(values = Counts(italy.deaths.reg[,1,,10]), col = "red", lwd= 2))
 
 
 MCMC <-fetchMCMC(filename)
@@ -480,15 +713,96 @@ plot(MCMC$model.hyper.year.damp, sub= "Hyper year damp" )
 plot(MCMC$model.hyper.year.scaleError, sub= "Hyper year scale error" )
 
 #------------------------------
+# Deaths with exposure reduced
+#------------------------------
+y <- italy.deaths.reg[,1,11:20,5:10] %>%
+  Counts(dimscales = c(time = "Intervals"))
+
+dimnames(italy.popn.reg)$time <- 2001:2016
+expose <- italy.popn.reg[,1,11:20,10:15] %>%
+  Counts(dimscales = c(time = "Intervals"))
+
+filename <- "C:/0_PhD/Thesis/Thesis_R/CMP1_DExp_partial2.est"
+
+estimateModel(Model(y ~ CMP(mean ~ age + region,
+                            dispersion = Dispersion(mean = Norm(mean = 0, sd = 1),
+                                                    scale = HalfT(scale = 0.05))),
+                    age ~ DLM(),
+                    region ~Exch(),
+                    jump = 0.03),
+              y = y,
+              exposure = expose,
+              filename = filename,
+              nBurnin = 150000,
+              nSim = 150000,
+              nChain = 3,
+              nThin = 200)
+
+estimateModel(Model(y ~ CMP(mean ~ 1,
+                            dispersion = Dispersion(mean = Norm(mean = 0, sd = 1),
+                                                    scale = HalfT(scale = 0.05))),
+
+                    jump = 0.03),
+              y = y,
+              exposure = expose,
+              filename = filename,
+              nBurnin = 150000,
+              nSim = 150000,
+              nChain = 3,
+              nThin = 200)
+
+continueEstimation(filename,nBurnin = 40000,
+                   nSim = 40000,
+                   nThin = 200)
+
+fetchSummary(filename)
+showModel(filename)
+listContents(filename)
+
+dea.chain <- fetch(filename, where=c("model", "likelihood", "rate"))
+disp.lik <- fetch(filename, where=c("model", "likelihood", "dispersion"))
+disp.prior <- fetch(filename, where=c("model", "prior", "dispersion", "mean"))
+dim(dea.chain)
+
+deaest<- apply(dea.chain, c(1,2,3), mean)
+dispest <- apply(disp.lik, c(1,2,3), mean)
+
+#dimnames(dea.chain)
+
+dplot( ~ age | region, data = dea.chain, subarray = time == "2012",
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
+       main = "deaths estimation")
+
+data <- Counts(deaest[,,1]*expose[,,1])
+dplot( ~ age | region, data = data,
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
+       main = "deaths estimation",
+       overlay = list(values = Counts(italy.deaths.reg[,1,,5]), col = "red", lwd= 2))
+
+MCMC <-fetchMCMC(filename)
+
+plot(MCMC$model.likelihood.rate, sub= "Likelihood rate")
+plot(MCMC$model.likelihood.dispersion, sub= "Likelihood dispersion" )
+plot(MCMC$model.prior.dispersion.mean, main= "Prior dispersion mean")
+plot(MCMC$model.prior.dispersion.sd, main= "Prior dispersion sd" )
+plot(MCMC$model.hyper.age.scaleLevel, sub= "Hyper age scale level" )
+plot(MCMC$model.prior.rate.mean, sub= "Prior rate mean" )
+plot(MCMC$model.prior.rate.sd, sub= "Prior rate sd" )
+plot(MCMC$model.hyper.age.scaleTrend, sub= "Hyper age scale trend")
+plot(MCMC$model.hyper.age.scaleError, sub= "Hyper age scale error" )
+
+
+#------------------------------
 # Deaths with exposure
 #------------------------------
 y <- italy.deaths.reg %>%
   Counts(dimscales = c(time = "Intervals"))
 
+dimnames(italy.popn.reg)$time <- 2001:2016
 expose <- italy.popn.reg %>%
   Counts(dimscales = c(time = "Intervals"))
 
-filename <- "C:/0_PhD/Thesis/Thesis_R/CMP1_death_exp1.est"
+filename <- "C:/0_PhD/Thesis/Thesis_R/CMP1_death_exp2.est"
 
 estimateModel(Model(y ~ CMP(mean ~ age + region + time,
                             dispersion = Dispersion(mean = Norm(mean = 0, sd = 1),
@@ -516,22 +830,22 @@ disp.lik <- fetch(filename, where=c("model", "likelihood", "dispersion"))
 disp.prior <- fetch(filename, where=c("model", "prior", "dispersion", "mean"))
 
 
-deaest<- apply(dea.chain, c(1,2,3), mean)
-dispest <- apply(disp.lik, c(1,2,3), mean)
+deaest<- apply(dea.chain, c(1,2,3,4), mean)
+dispest <- apply(disp.lik, c(1,2,3,4), mean)
 
-expose <- aperm(expose, c(2,1,3))
-plot(deaest[,,11]*expose[,,15] - italy.deaths.reg[,,11], main = "deaths: estimation vs data 2015",
+expose <- aperm(expose, c(2,1,3,4))
+plot(deaest[,1,,10]*expose[,1,,14] - italy.deaths.reg[,1,,10], main = "deaths: estimation vs data 2015",
      xlab = "Regions", ylab = "Diff", pch = 18)
-
-dplot( ~ age | region, data = dea.chain, subarray = time == "2012",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+dimnames(italy.deaths.reg)
+dplot( ~ age | region, data = dea.chain[,1,,,], subarray = time == "2012",
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "deaths estimation")
 
-data <- Counts(deaest[,,11]*expose[,,15])
+data <- Counts(deaest[,1,,10]*expose[,1,,15])
 dplot( ~ age | region, data = data,
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "deaths estimation",
-       overlay = list(values = Counts(italy.deaths.reg[,,11]), col = "red", lwd= 2))
+       overlay = list(values = Counts(italy.deaths.reg[,1,,10]), col = "red", lwd= 2))
 
 
 MCMC <-fetchMCMC(filename)
@@ -592,17 +906,17 @@ plot(birest[,7,11] - italy.births.reg[,7,11], main = "Births: estimation vs data
      xlab = "Regions", ylab = "Diff", pch = 18)
 
 dplot( ~ age | region, data = bir.chain, subarray = time == "2012",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "Births estimation")
 
 dplot( ~ age | region, data = disp.lik, subarray = time == "2012",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "Births estimation")
 
 
 dplot( ~ age | region, data = Counts(birest, dimscales = c(time = "Intervals")),
        subarray = time == "2012",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "Births estimation",
        overlay = list(values = Counts(italy.births.reg[,,11]), col = "red", lwd= 2))
 
@@ -668,12 +982,12 @@ plot(birest[,,11]*expose[,,15] - italy.births.reg[,,11], main = "Births: estimat
      xlab = "Regions", ylab = "Diff", pch = 18)
 
 dplot( ~ age | region, data = bir.chain, subarray = time == "2012",
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "Births estimation")
 
 data <- Counts(birest[,,11]*expose[,,15])
 dplot( ~ age | region, data = data,
-       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"), 
+       prob = c(0.025, 0.25, 0.5, 0.75, 0.975), scales = list(y = "free"),
        main = "Births estimation",
        overlay = list(values = Counts(italy.births.reg[,,11]), col = "red", lwd= 2))
 
